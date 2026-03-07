@@ -27,6 +27,10 @@ const VideoSchema = new mongoose.Schema({
     type: String,
     unique: true,
   },
+  description: {
+    type: String,
+    required: false,
+  },
 }, { timestamps: true });
 
 // Pre-save middleware to generate slug

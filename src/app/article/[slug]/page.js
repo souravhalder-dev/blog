@@ -19,7 +19,28 @@ export async function generateStaticParams() {
 export default async function ArticlePage({ params }) {
   await dbConnect();
   const { slug } = await params;
-  const article = await Article.findOne({ slug: decodeURIComponent(slug) }).lean();
+  
+  // Try finding by exact slug match first (Next.js usually decodes params)
+  let article = await Article.findOne({ slug }).lean();
+
+  // If not found, try decoding it explicitly (just in case)
+  if (!article) {
+      try {
+        article = await Article.findOne({ slug: decodeURIComponent(slug) }).lean();
+      } catch (e) {
+        // ignore error
+      }
+  }
+
+  // If still not found, try ENCODING it (because some imported articles might have percent-encoded slugs in DB)
+  if (!article) {
+      article = await Article.findOne({ slug: encodeURIComponent(slug) }).lean();
+  }
+  
+  // Try one more variation: encoded but lowercase? (encodeURIComponent uses uppercase hex)
+  if (!article) {
+       article = await Article.findOne({ slug: encodeURIComponent(slug).toLowerCase() }).lean();
+  }
 
   if (!article) {
     notFound();

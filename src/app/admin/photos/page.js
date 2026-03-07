@@ -17,6 +17,7 @@ export default function PhotosAdmin() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
 
   useEffect(() => {
     fetchPhotos();
@@ -129,9 +130,28 @@ export default function PhotosAdmin() {
       try {
         await fetch(`/api/photos/${id}`, { method: 'DELETE' });
         setPhotos(photos.filter(p => p._id !== id));
+        setSelectedPhotos(selectedPhotos.filter(sid => sid !== id));
       } catch (error) {
         console.error(error);
       }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPhotos.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedPhotos.length} photos?`)) {
+        try {
+            await Promise.all(selectedPhotos.map(id => 
+                fetch(`/api/photos/${id}`, { method: 'DELETE' })
+            ));
+            
+            setPhotos(photos.filter(p => !selectedPhotos.includes(p._id)));
+            setSelectedPhotos([]);
+        } catch (error) {
+            console.error('Error deleting photos:', error);
+            alert('Failed to delete some photos.');
+        }
     }
   };
 
@@ -139,12 +159,37 @@ export default function PhotosAdmin() {
     photo.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleSelectAll = (e) => {
+      if (e.target.checked) {
+          setSelectedPhotos(filteredPhotos.map(p => p._id));
+      } else {
+          setSelectedPhotos([]);
+      }
+  };
+
+  const handleSelectOne = (id) => {
+      if (selectedPhotos.includes(id)) {
+          setSelectedPhotos(selectedPhotos.filter(sid => sid !== id));
+      } else {
+          setSelectedPhotos([...selectedPhotos, id]);
+      }
+  };
+
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Photos</h1>
         
-        <div className="flex w-full md:w-auto gap-4">
+        <div className="flex w-full md:w-auto gap-4 items-center">
+            {selectedPhotos.length > 0 && (
+                <button 
+                    onClick={handleBulkDelete}
+                    className="bg-red-600 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-red-700 flex-shrink-0 text-sm"
+                >
+                    <Trash2 size={16} /> Delete ({selectedPhotos.length})
+                </button>
+            )}
+
             <div className="relative flex-1 md:w-64">
                 <input 
                     type="text" 
@@ -173,6 +218,17 @@ export default function PhotosAdmin() {
         </div>
       ) : (
         <div className="space-y-6">
+          <div className="flex items-center gap-2 mb-4 bg-gray-50 p-2 rounded-md border border-gray-200 w-fit">
+              <input 
+                  type="checkbox" 
+                  id="selectAll"
+                  onChange={handleSelectAll}
+                  checked={filteredPhotos.length > 0 && selectedPhotos.length === filteredPhotos.length}
+                  className="rounded border-gray-300 text-black focus:ring-black h-4 w-4"
+              />
+              <label htmlFor="selectAll" className="text-sm font-medium text-gray-700 cursor-pointer select-none">Select All Photos</label>
+          </div>
+
           {isAdding && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-4">
@@ -299,11 +355,19 @@ export default function PhotosAdmin() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {filteredPhotos.map((photo) => (
                 <div key={photo._id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div className="absolute top-2 left-2 z-10">
+                        <input 
+                            type="checkbox" 
+                            checked={selectedPhotos.includes(photo._id)}
+                            onChange={() => handleSelectOne(photo._id)}
+                            className="rounded border-gray-300 text-black focus:ring-black h-4 w-4 bg-white/80 backdrop-blur-sm shadow-sm cursor-pointer"
+                        />
+                    </div>
                     <div className="aspect-square bg-gray-100 flex items-center justify-center text-gray-400 text-xs relative">
                         {photo.url ? <img src={photo.url} alt={photo.title} className="w-full h-full object-cover" /> : 'No Image'}
                         
                         {/* Type Badge */}
-                        <span className={`absolute top-2 left-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded text-white ${photo.type === 'upload' ? 'bg-blue-600' : 'bg-black'}`}>
+                        <span className={`absolute top-2 left-8 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded text-white ${photo.type === 'upload' ? 'bg-blue-600' : 'bg-black'}`}>
                             {photo.type === 'upload' ? 'Upload' : 'Link'}
                         </span>
                     </div>

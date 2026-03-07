@@ -1,24 +1,55 @@
 
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileText, FolderTree, Image, Video, LogOut, Users, User, File, Settings } from 'lucide-react';
+import { LayoutDashboard, FileText, FolderTree, Image, Video, LogOut, Users, User, File, Settings, Import, Database } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
+  const [userRole, setUserRole] = useState(null);
 
-  const navItems = [
-    { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/admin/articles', label: 'Articles', icon: FileText },
-    { href: '/admin/pages', label: 'Pages', icon: File },
-    { href: '/admin/categories', label: 'Categories', icon: FolderTree },
-    { href: '/admin/settings/homepage', label: 'Homepage Layout', icon: Settings },
-    { href: '/admin/settings/seo', label: 'SEO Settings', icon: Settings },
-    { href: '/admin/photos', label: 'Photos', icon: Image },
-    { href: '/admin/videos', label: 'Videos', icon: Video },
-    { href: '/admin/users', label: 'Users', icon: Users },
-    { href: '/admin/profile', label: 'Profile', icon: User },
+  useEffect(() => {
+    // Check local storage or fetch session to determine role
+    // Since we set cookie as httpOnly, we can't read it here.
+    // But login API returns user data, we should store it in localStorage or Context.
+    // For now, let's assume localStorage 'user_role' is set on login.
+    // If not, we should probably fetch /api/auth/me (need to create it) or just hide items based on failure.
+    
+    // Better approach: fetch user profile on mount to verify session and get role
+    // But since middleware already protects the routes, we can just hide the UI elements.
+    // Let's assume the user object is stored in localStorage on login for UI purposes.
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+        try {
+            const parsed = JSON.parse(storedUser);
+            setUserRole(parsed.role);
+        } catch (e) {
+            // ignore
+        }
+    }
+  }, []);
+
+  const allNavItems = [
+    { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'] },
+    { href: '/admin/articles', label: 'Articles', icon: FileText, roles: ['admin'] },
+    { href: '/admin/pages', label: 'Pages', icon: File, roles: ['admin'] },
+    { href: '/admin/categories', label: 'Categories', icon: FolderTree, roles: ['admin'] },
+    { href: '/admin/settings/homepage', label: 'Homepage Layout', icon: Settings, roles: ['admin'] },
+    { href: '/admin/settings/seo', label: 'SEO Settings', icon: Settings, roles: ['admin'] },
+    { href: '/admin/import', label: 'Import Content', icon: Import, roles: ['admin'] },
+    { href: '/admin/backup', label: 'Backup', icon: Database, roles: ['admin'] },
+    { href: '/admin/photos', label: 'Photos', icon: Image, roles: ['admin'] },
+    { href: '/admin/videos', label: 'Videos', icon: Video, roles: ['admin'] },
+    { href: '/admin/users', label: 'Users', icon: Users, roles: ['admin'] },
+    { href: '/admin/profile', label: 'Profile', icon: User, roles: ['admin', 'user'] },
   ];
+
+  // If role is not loaded yet, maybe show nothing or just Profile?
+  // Let's filter items.
+  const navItems = allNavItems.filter(item => 
+    !item.roles || (userRole && item.roles.includes(userRole))
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 flex">

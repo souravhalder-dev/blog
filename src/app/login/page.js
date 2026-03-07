@@ -33,9 +33,15 @@ export default function LoginPage() {
       }
 
       // Login successful
-      document.cookie = 'auth=true; path=/; max-age=86400'; // 1 day
+      // The API now sets an HTTP-only cookie 'auth_token'
       localStorage.setItem('user', JSON.stringify(data.user));
-      router.push('/admin');
+      
+      // Redirect based on role
+      if (data.user.role === 'admin') {
+          router.push('/admin');
+      } else {
+          router.push('/admin/profile');
+      }
     } catch (err) {
       setError(err.message);
     } finally {

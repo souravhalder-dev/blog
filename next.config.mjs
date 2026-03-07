@@ -2,14 +2,18 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '100mb',
     },
-  },
-  // Increase payload size limit for API routes
-  serverRuntimeConfig: {
-    bodySizeLimit: '100mb',
   },
 };
 

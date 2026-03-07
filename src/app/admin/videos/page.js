@@ -10,6 +10,7 @@ export default function VideosAdmin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({ 
     title: '', 
+    description: '',
     url: '', 
     date: new Date().toISOString().split('T')[0],
     type: 'youtube', // 'youtube' or 'upload'
@@ -17,6 +18,7 @@ export default function VideosAdmin() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedVideos, setSelectedVideos] = useState([]);
 
   useEffect(() => {
     fetchVideos();
@@ -108,6 +110,7 @@ export default function VideosAdmin() {
     setEditingVideo(video);
     setFormData({
       title: video.title,
+      description: video.description || '',
       url: video.url,
       date: video.date,
       type: video.type || 'youtube',
@@ -123,9 +126,28 @@ export default function VideosAdmin() {
       try {
         await fetch(`/api/videos/${id}`, { method: 'DELETE' });
         setVideos(videos.filter(v => v._id !== id));
+        setSelectedVideos(selectedVideos.filter(sid => sid !== id));
       } catch (error) {
         console.error(error);
       }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedVideos.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedVideos.length} videos?`)) {
+        try {
+            await Promise.all(selectedVideos.map(id => 
+                fetch(`/api/videos/${id}`, { method: 'DELETE' })
+            ));
+            
+            setVideos(videos.filter(v => !selectedVideos.includes(v._id)));
+            setSelectedVideos([]);
+        } catch (error) {
+            console.error('Error deleting videos:', error);
+            alert('Failed to delete some videos.');
+        }
     }
   };
 
@@ -133,6 +155,7 @@ export default function VideosAdmin() {
     setEditingVideo(null);
     setFormData({ 
       title: '', 
+      description: '',
       url: '', 
       date: new Date().toISOString().split('T')[0],
       type: 'youtube',
@@ -152,12 +175,37 @@ export default function VideosAdmin() {
     video.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleSelectAll = (e) => {
+      if (e.target.checked) {
+          setSelectedVideos(filteredVideos.map(v => v._id));
+      } else {
+          setSelectedVideos([]);
+      }
+  };
+
+  const handleSelectOne = (id) => {
+      if (selectedVideos.includes(id)) {
+          setSelectedVideos(selectedVideos.filter(sid => sid !== id));
+      } else {
+          setSelectedVideos([...selectedVideos, id]);
+      }
+  };
+
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Videos</h1>
         
-        <div className="flex w-full md:w-auto gap-4">
+        <div className="flex w-full md:w-auto gap-4 items-center">
+            {selectedVideos.length > 0 && (
+                <button 
+                    onClick={handleBulkDelete}
+                    className="bg-red-600 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-red-700 flex-shrink-0 text-sm"
+                >
+                    <Trash2 size={16} /> Delete ({selectedVideos.length})
+                </button>
+            )}
+
             <div className="relative flex-1 md:w-64">
                 <input 
                     type="text" 
@@ -186,6 +234,17 @@ export default function VideosAdmin() {
         </div>
       ) : (
         <div className="space-y-6">
+          <div className="flex items-center gap-2 mb-4 bg-gray-50 p-2 rounded-md border border-gray-200 w-fit">
+              <input 
+                  type="checkbox" 
+                  id="selectAll"
+                  onChange={handleSelectAll}
+                  checked={filteredVideos.length > 0 && selectedVideos.length === filteredVideos.length}
+                  className="rounded border-gray-300 text-black focus:ring-black h-4 w-4"
+              />
+              <label htmlFor="selectAll" className="text-sm font-medium text-gray-700 cursor-pointer select-none">Select All Videos</label>
+          </div>
+
           {isAdding && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-4">
@@ -205,6 +264,16 @@ export default function VideosAdmin() {
                       className="w-full border border-gray-300 px-3 py-2 rounded-md"
                       value={formData.title}
                       onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                    <textarea 
+                      placeholder="Video Description" 
+                      className="w-full border border-gray-300 px-3 py-2 rounded-md h-24 resize-none"
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
                     />
                   </div>
                   
@@ -325,6 +394,14 @@ export default function VideosAdmin() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredVideos.map((video) => (
                 <div key={video._id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div className="absolute top-2 left-2 z-10">
+                        <input 
+                            type="checkbox" 
+                            checked={selectedVideos.includes(video._id)}
+                            onChange={() => handleSelectOne(video._id)}
+                            className="rounded border-gray-300 text-black focus:ring-black h-4 w-4 bg-white/80 backdrop-blur-sm"
+                        />
+                    </div>
                     <div className="aspect-video bg-black flex items-center justify-center text-gray-400 relative">
                         {video.type === 'youtube' || !video.type ? ( // Default to youtube for old records
                             getYouTubeId(video.url) ? (

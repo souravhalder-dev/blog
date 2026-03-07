@@ -7,6 +7,7 @@ import { Trash2, Plus, Loader2, User, Mail, Shield } from 'lucide-react';
 export default function UsersAdmin() {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [roleFilter, setRoleFilter] = useState('user'); // Default to 'user' as requested
 
   useEffect(() => {
     fetch('/api/users')
@@ -30,16 +31,34 @@ export default function UsersAdmin() {
     }
   };
 
+  const filteredUsers = users.filter(user => {
+    if (roleFilter === 'all') return true;
+    return user.role === roleFilter;
+  });
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Users</h1>
-        <Link 
-          href="/admin/users/new" 
-          className="bg-black text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-gray-800"
-        >
-          <Plus size={16} /> New User
-        </Link>
+        
+        <div className="flex gap-4">
+            <select 
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-black"
+            >
+                <option value="user">Users Only</option>
+                <option value="admin">Admins Only</option>
+                <option value="all">Show All</option>
+            </select>
+
+            <Link 
+            href="/admin/users/new" 
+            className="bg-black text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-gray-800"
+            >
+            <Plus size={16} /> New User
+            </Link>
+        </div>
       </div>
 
       {isLoading ? (
@@ -58,7 +77,14 @@ export default function UsersAdmin() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {users.map((user) => (
+              {filteredUsers.length === 0 ? (
+                  <tr>
+                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                          No users found with role "{roleFilter}"
+                      </td>
+                  </tr>
+              ) : (
+                filteredUsers.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
@@ -93,7 +119,7 @@ export default function UsersAdmin() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

@@ -6,18 +6,28 @@ import { Edit, Trash2, Plus, Loader2, Search } from 'lucide-react';
 
 export default function ArticlesAdmin() {
   const [articles, setArticles] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedArticles, setSelectedArticles] = useState([]);
 
   useEffect(() => {
-    fetchArticles();
+    fetchData();
   }, []);
 
-  const fetchArticles = async () => {
+  const fetchData = async () => {
     try {
-      const res = await fetch('/api/articles');
-      const data = await res.json();
-      setArticles(data);
+      const [articlesRes, categoriesRes] = await Promise.all([
+          fetch('/api/articles'),
+          fetch('/api/categories')
+      ]);
+      
+      const articlesData = await articlesRes.json();
+      const categoriesData = await categoriesRes.json();
+
+      setArticles(articlesData);
+      setCategories(categoriesData);
     } catch (error) {
       console.error(error);
     } finally {
@@ -30,23 +40,71 @@ export default function ArticlesAdmin() {
       try {
         await fetch(`/api/articles/${id}`, { method: 'DELETE' });
         setArticles(articles.filter(a => a._id !== id));
+        setSelectedArticles(selectedArticles.filter(sid => sid !== id));
       } catch (error) {
         console.error(error);
       }
     }
   };
 
-  const filteredArticles = articles.filter(article => 
-    article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    article.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleBulkDelete = async () => {
+    if (selectedArticles.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedArticles.length} articles?`)) {
+        try {
+            // Delete one by one (or implement bulk API)
+            // For simplicity in this demo, parallel requests
+            await Promise.all(selectedArticles.map(id => 
+                fetch(`/api/articles/${id}`, { method: 'DELETE' })
+            ));
+            
+            setArticles(articles.filter(a => !selectedArticles.includes(a._id)));
+            setSelectedArticles([]);
+        } catch (error) {
+            console.error('Error deleting articles:', error);
+            alert('Failed to delete some articles.');
+        }
+    }
+  };
+
+  const filteredArticles = articles.filter(article => {
+    const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.category.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory ? article.category === selectedCategory : true;
+    return matchesSearch && matchesCategory;
+  });
+
+  const handleSelectAll = (e) => {
+      if (e.target.checked) {
+          setSelectedArticles(filteredArticles.map(a => a._id));
+      } else {
+          setSelectedArticles([]);
+      }
+  };
+
+  const handleSelectOne = (id) => {
+      if (selectedArticles.includes(id)) {
+          setSelectedArticles(selectedArticles.filter(sid => sid !== id));
+      } else {
+          setSelectedArticles([...selectedArticles, id]);
+      }
+  };
 
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Articles</h1>
         
-        <div className="flex w-full md:w-auto gap-4">
+        <div className="flex w-full md:w-auto gap-4 items-center">
+            {selectedArticles.length > 0 && (
+                <button 
+                    onClick={handleBulkDelete}
+                    className="bg-red-600 text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-red-700 flex-shrink-0 text-sm"
+                >
+                    <Trash2 size={16} /> Delete ({selectedArticles.length})
+                </button>
+            )}
+
             <div className="relative flex-1 md:w-64">
                 <input 
                     type="text" 
@@ -57,6 +115,18 @@ export default function ArticlesAdmin() {
                 />
                 <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
             </div>
+
+            <select 
+                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black bg-white"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+                <option value="">All Categories</option>
+                {categories.map(cat => (
+                    <option key={cat._id} value={cat.name}>{cat.name}</option>
+                ))}
+            </select>
+
             <Link href="/admin/articles/new" className="bg-black text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-gray-800 flex-shrink-0">
               <Plus size={16} /> New Article
             </Link>
@@ -72,6 +142,14 @@ export default function ArticlesAdmin() {
           <table className="w-full text-left">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-6 py-3 w-4">
+                    <input 
+                        type="checkbox" 
+                        onChange={handleSelectAll}
+                        checked={filteredArticles.length > 0 && selectedArticles.length === filteredArticles.length}
+                        className="rounded border-gray-300 text-black focus:ring-black"
+                    />
+                </th>
                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Title</th>
                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
@@ -82,13 +160,21 @@ export default function ArticlesAdmin() {
             <tbody className="divide-y divide-gray-200">
               {filteredArticles.length === 0 ? (
                 <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
                         No articles found matching "{searchQuery}"
                     </td>
                 </tr>
               ) : (
                 filteredArticles.map((article) => (
                     <tr key={article._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                        <input 
+                            type="checkbox" 
+                            checked={selectedArticles.includes(article._id)}
+                            onChange={() => handleSelectOne(article._id)}
+                            className="rounded border-gray-300 text-black focus:ring-black"
+                        />
+                    </td>
                     <td className="px-6 py-4 font-medium text-gray-900">{article.title}</td>
                     <td className="px-6 py-4 text-gray-500">{article.category}</td>
                     <td className="px-6 py-4 text-gray-500">{article.date}</td>
