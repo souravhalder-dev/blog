@@ -75,6 +75,22 @@ export default function RssSitemapSettings() {
     } catch {}
   };
 
+  const saveSiteUrl = async () => {
+    setSaving(true);
+    try {
+      await fetch('/api/settings/general', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteUrl }),
+      });
+      alert('Site URL saved');
+    } catch {
+      alert('Failed to save Site URL');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-gray-400" size={32} /></div>;
   }
@@ -82,6 +98,23 @@ export default function RssSitemapSettings() {
   return (
     <div className="max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">RSS & Sitemap</h1>
+
+      {/* Site URL (affects sitemap and RSS absolute links) */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <h2 className="font-semibold mb-2">Site URL</h2>
+        <p className="text-xs text-gray-500 mb-3">Used to build absolute links in sitemap and RSS. Example: https://souravhalder.tech</p>
+        <div className="flex gap-2">
+          <input 
+            value={siteUrl}
+            onChange={e => setSiteUrl(e.target.value)}
+            placeholder="https://your-domain.com"
+            className="flex-1 border border-gray-300 rounded px-3 py-2"
+          />
+          <button onClick={saveSiteUrl} disabled={saving} className="bg-black text-white px-4 py-2 rounded-md">
+            {saving ? 'Saving…' : 'Save Domain'}
+          </button>
+        </div>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6 mb-6">
         <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -161,4 +194,3 @@ export default function RssSitemapSettings() {
     </div>
   );
 }
-
