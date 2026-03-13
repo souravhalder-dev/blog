@@ -213,13 +213,14 @@ export default async function Home() {
                   <div className="md:col-span-8">
                     <Link href={`/article/${featuredArticle.slug}`} className="group">
                       <div className="relative aspect-video mb-4 overflow-hidden bg-gray-100 flex items-center justify-center">
-                          {featuredArticle.image ? (
-                           <img 
-                             src={featuredArticle.image} 
-                             alt={featuredArticle.title} 
-                             className="w-full h-full object-cover"
-                             fetchPriority="high"
-                             decoding="sync"
+                         {featuredArticle.image ? (
+                           <Image
+                             src={featuredArticle.image}
+                             alt={featuredArticle.title}
+                             fill
+                             priority
+                             sizes="(max-width: 768px) 100vw, 66vw"
+                             className="object-cover"
                            />
                          ) : (
                            <div className="text-gray-400 font-serif italic text-2xl text-center p-4">

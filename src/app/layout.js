@@ -50,7 +50,7 @@ export async function generateMetadata() {
 
 export default async function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${playfair.variable} ${merriweather.variable} font-sans antialiased bg-white text-gray-900`}
       >

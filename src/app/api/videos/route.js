@@ -2,6 +2,9 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Video from '@/models/Video';
+import { headers } from 'next/headers';
+import { getBaseUrl } from '@/lib/site';
+import { pingSitemaps } from '@/lib/ping';
 
 export async function GET() {
   try {
@@ -38,6 +41,7 @@ export async function POST(request) {
       slug,
       date: body.date || new Date().toISOString().split('T')[0]
     });
+    try { await pingSitemaps(await getBaseUrl(headers())); } catch {}
     return NextResponse.json(video, { status: 201 });
   } catch (error) {
     console.error('Error creating video:', error);

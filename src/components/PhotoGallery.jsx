@@ -143,6 +143,7 @@ export default function PhotoGallery({ photos, user, initialPhotoId }) {
           <button 
             className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-50 p-2"
             onClick={closeLightbox}
+            aria-label="Close"
           >
             <X size={32} />
           </button>
@@ -151,6 +152,7 @@ export default function PhotoGallery({ photos, user, initialPhotoId }) {
           <button 
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors p-2 bg-black/20 hover:bg-black/40 rounded-full"
             onClick={showPrev}
+            aria-label="Previous photo"
           >
             <ChevronLeft size={40} />
           </button>
@@ -158,6 +160,7 @@ export default function PhotoGallery({ photos, user, initialPhotoId }) {
           <button 
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors p-2 bg-black/20 hover:bg-black/40 rounded-full"
             onClick={showNext}
+            aria-label="Next photo"
           >
             <ChevronRight size={40} />
           </button>

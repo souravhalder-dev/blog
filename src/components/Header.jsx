@@ -84,9 +84,9 @@ export default function Header() {
         <div className="container mx-auto px-4 flex justify-between items-center text-xs font-medium tracking-wider text-gray-500">
           <div className="hidden md:block">{today}</div>
           <div className="flex items-center gap-4 mx-auto md:mx-0">
-             <a href="#" className="hover:text-black transition-colors"><Twitter size={14} /></a>
-             <a href="#" className="hover:text-black transition-colors"><Facebook size={14} /></a>
-             <a href="#" className="hover:text-black transition-colors"><Instagram size={14} /></a>
+             <a href="#" aria-label="Twitter" className="hover:text-black transition-colors"><Twitter size={14} /></a>
+             <a href="#" aria-label="Facebook" className="hover:text-black transition-colors"><Facebook size={14} /></a>
+             <a href="#" aria-label="Instagram" className="hover:text-black transition-colors"><Instagram size={14} /></a>
              <span className="w-px h-3 bg-gray-300 mx-2"></span>
              {user ? (
                 <Link href="/admin" className="text-black font-bold hover:underline">Admin Dashboard</Link>
@@ -127,6 +127,7 @@ export default function Header() {
             <button 
               className="md:hidden p-1 hover:bg-gray-100 rounded"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -148,7 +149,7 @@ export default function Header() {
             {/* Search Icon (Always visible) */}
             <div className="md:absolute md:right-4 flex items-center">
                 {isSearchOpen && (
-                    <form onSubmit={handleSearch} className="mr-2">
+                    <form onSubmit={handleSearch} className="mr-2" aria-label="Site search">
                         <input 
                             type="text" 
                             placeholder="Search..." 
@@ -156,12 +157,14 @@ export default function Header() {
                             autoFocus
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            aria-label="Search"
                         />
                     </form>
                 )}
                 <button 
                     className="p-1 hover:text-red-600 transition-colors"
                     onClick={() => setIsSearchOpen(!isSearchOpen)}
+                    aria-label={isSearchOpen ? 'Close search' : 'Open search'}
                 >
                     {isSearchOpen ? <X size={20} /> : <Search size={20} />}
                 </button>

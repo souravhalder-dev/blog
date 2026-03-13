@@ -1,10 +1,13 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowLeft, User } from 'lucide-react';
 import dbConnect from '@/lib/db';
 import Article from '@/models/Article';
 import UserDoc from '@/models/User';
+import { headers } from 'next/headers';
+import { getBaseUrl } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +17,23 @@ export async function generateStaticParams() {
   return articles.map((article) => ({
     slug: article.slug,
   }));
+}
+
+export async function generateMetadata({ params }) {
+  await dbConnect();
+  const { slug } = await params;
+  const article = await Article.findOne({ slug }).lean();
+  if (!article) return { title: 'Article' };
+  const base = await getBaseUrl(headers());
+  const url = `${base}/article/${article.slug}`;
+  const images = article.image ? [{ url: article.image }] : [];
+  return {
+    title: article.title,
+    description: article.summary,
+    alternates: { canonical: url },
+    openGraph: { url, title: article.title, description: article.summary, images },
+    twitter: { card: 'summary_large_image', title: article.title, description: article.summary, images: images.map(i => i.url) },
+  };
 }
 
 export default async function ArticlePage({ params }) {
@@ -87,12 +107,13 @@ export default async function ArticlePage({ params }) {
 
         <div className="aspect-video bg-gray-100 mb-8 relative overflow-hidden flex items-center justify-center">
             {article.image ? (
-              <img 
-                src={article.image} 
-                alt={article.title} 
-                className="w-full h-full object-cover"
-                fetchPriority="high"
-                decoding="sync"
+              <Image
+                src={article.image}
+                alt={article.title}
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover"
               />
             ) : (
               <div className="text-gray-400 font-serif italic text-lg">

@@ -2,6 +2,9 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Photo from '@/models/Photo';
+import { headers } from 'next/headers';
+import { getBaseUrl } from '@/lib/site';
+import { pingSitemaps } from '@/lib/ping';
 
 export async function GET() {
   try {
@@ -21,6 +24,7 @@ export async function POST(request) {
       ...body,
       date: body.date || new Date().toISOString().split('T')[0]
     });
+    try { await pingSitemaps(await getBaseUrl(headers())); } catch {}
     return NextResponse.json(photo, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

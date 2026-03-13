@@ -78,7 +78,7 @@ export default function PagesAdmin() {
                         </span>
                     </td>
                     <td className="px-6 py-4 text-right flex justify-end gap-2">
-                        <Link href={`/${page.slug}`} target="_blank" className="text-gray-400 hover:text-gray-600 p-1">
+                        <Link href={`/${page.slug}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600 p-1">
                             <Eye size={16} />
                         </Link>
                         <Link href={`/admin/pages/${page._id}`} className="text-blue-600 hover:text-blue-900 p-1">

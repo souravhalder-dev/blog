@@ -4,6 +4,9 @@ import dbConnect from '@/lib/db';
 import Article from '@/models/Article';
 import Subscriber from '@/models/Subscriber';
 import { sendEmail } from '@/lib/email';
+import { headers } from 'next/headers';
+import { getBaseUrl } from '@/lib/site';
+import { pingSitemaps } from '@/lib/ping';
 
 export async function GET() {
   try {
@@ -36,7 +39,8 @@ export async function POST(request) {
 
         if (emails.length > 0) {
             const subject = `New Story: ${article.title}`;
-            const articleUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/article/${article.slug}`;
+            const baseUrl = await getBaseUrl(headers());
+            const articleUrl = `${baseUrl}/article/${article.slug}`;
             
             const html = `
                 <div style="font-family: serif; max-width: 600px; margin: 0 auto;">
@@ -57,6 +61,7 @@ export async function POST(request) {
             Promise.all(emails.map(email => sendEmail({ to: email, subject, html })))
                 .catch(err => console.error('Failed to send notification emails:', err));
         }
+        try { await pingSitemaps(await getBaseUrl(headers())); } catch {}
     }
 
     return NextResponse.json(article, { status: 201 });
