@@ -1,7 +1,9 @@
 
 import Link from 'next/link';
+import Image from 'next/image';
 import dbConnect from '@/lib/db';
 import Article from '@/models/Article';
+import { optimizeCdn } from '@/lib/images';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,17 +35,17 @@ export default async function SearchPage({ searchParams }) {
             <div key={article._id} className="border-b border-gray-200 pb-8 last:border-0">
               <Link href={`/article/${article.slug}`} className="group block">
                 <div className="flex flex-col md:flex-row gap-6">
-                   <div className="w-full md:w-1/3 aspect-video bg-gray-100 overflow-hidden flex items-center justify-center">
+                   <div className="w-full md:w-1/3 aspect-video bg-gray-100 overflow-hidden flex items-center justify-center relative">
                       {article.image ? (
-                        <img 
-                          src={article.image} 
-                          alt={article.title} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          loading="lazy"
-                          decoding="async"
+                        <Image
+                          src={optimizeCdn(article.image)}
+                          alt={article.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="text-gray-400 font-serif italic text-center p-4">
+                        <div className="text-gray-400 font-serif italic text-lg text-center p-4">
                           {article.title}
                         </div>
                       )}

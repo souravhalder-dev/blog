@@ -51,6 +51,11 @@ export async function generateMetadata() {
 export default async function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="" />
+        <link rel="preconnect" href="https://img.youtube.com" crossOrigin="" />
+        <link rel="preconnect" href="https://www.youtube.com" crossOrigin="" />
+      </head>
       <body
         className={`${playfair.variable} ${merriweather.variable} font-sans antialiased bg-white text-gray-900`}
       >

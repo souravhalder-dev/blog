@@ -29,4 +29,7 @@ const PhotoSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+PhotoSchema.index({ isFeatured: 1, date: -1 });
+PhotoSchema.index({ date: -1 });
+
 export default mongoose.models.Photo || mongoose.model('Photo', PhotoSchema);

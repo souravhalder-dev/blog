@@ -39,7 +39,7 @@ export default function ArticlesAdmin() {
     if (confirm('Are you sure you want to delete this article?')) {
       try {
         await fetch(`/api/articles/${id}`, { method: 'DELETE' });
-        setArticles(articles.filter(a => a.id !== id));
+        setArticles(articles.filter(a => (a._id || a.id) !== id));
         setSelectedArticles(selectedArticles.filter(sid => sid !== id));
       } catch (error) {
         console.error(error);
@@ -76,7 +76,7 @@ export default function ArticlesAdmin() {
 
   const handleSelectAll = (e) => {
       if (e.target.checked) {
-          setSelectedArticles(filteredArticles.map(a => a.id));
+          setSelectedArticles(filteredArticles.map(a => a._id || a.id));
       } else {
           setSelectedArticles([]);
       }
@@ -123,7 +123,7 @@ export default function ArticlesAdmin() {
             >
                 <option value="">All Categories</option>
                 {categories.map(cat => (
-                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    <option key={cat._id || cat.id} value={cat.name}>{cat.name}</option>
                 ))}
             </select>
 
@@ -170,8 +170,8 @@ export default function ArticlesAdmin() {
                     <td className="px-6 py-4">
                         <input 
                             type="checkbox" 
-                            checked={selectedArticles.includes(article.id)}
-                            onChange={() => handleSelectOne(article.id)}
+                        checked={selectedArticles.includes(article._id || article.id)}
+                        onChange={() => handleSelectOne(article._id || article.id)}
                             className="rounded border-gray-300 text-black focus:ring-black"
                         />
                     </td>
@@ -186,10 +186,10 @@ export default function ArticlesAdmin() {
                         </span>
                     </td>
                     <td className="px-6 py-4 text-right flex justify-end gap-2">
-                        <Link href={`/admin/articles/${article.id}`} className="text-blue-600 hover:text-blue-900 p-1">
+                        <Link href={`/admin/articles/${article._id || article.id}`} className="text-blue-600 hover:text-blue-900 p-1">
                         <Edit size={16} />
                         </Link>
-                        <button onClick={() => handleDelete(article.id)} className="text-red-600 hover:text-red-900 p-1">
+                        <button onClick={() => handleDelete(article._id || article.id)} className="text-red-600 hover:text-red-900 p-1">
                         <Trash2 size={16} />
                         </button>
                     </td>

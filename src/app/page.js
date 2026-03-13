@@ -9,7 +9,7 @@ import Category from '@/models/Category';
 import HomepageSetting from '@/models/HomepageSetting';
 import Settings from '@/models/Settings';
 
-export const dynamic = 'force-dynamic'; // For demo purposes, to see updates instantly
+export const revalidate = 60;
 
 async function getData() {
   await dbConnect();

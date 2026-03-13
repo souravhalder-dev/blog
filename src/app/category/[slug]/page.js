@@ -1,11 +1,13 @@
 
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import dbConnect from '@/lib/db';
 import Article from '@/models/Article';
 import Category from '@/models/Category';
+import { optimizeCdn } from '@/lib/images';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   await dbConnect();
@@ -39,12 +41,12 @@ export default async function CategoryPage({ params }) {
                <Link href={`/article/${article.slug}`}>
                  <div className="aspect-video bg-gray-100 mb-4 overflow-hidden flex items-center justify-center relative">
                    {article.image ? (
-                      <img 
-                        src={article.image} 
-                        alt={article.title} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                        loading="lazy"
-                        decoding="async"
+                      <Image
+                        src={optimizeCdn(article.image)}
+                        alt={article.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="text-gray-400 font-serif italic text-lg text-center p-4">

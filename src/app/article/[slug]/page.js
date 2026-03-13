@@ -9,7 +9,7 @@ import UserDoc from '@/models/User';
 import { headers } from 'next/headers';
 import { getBaseUrl } from '@/lib/site';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   await dbConnect();

@@ -76,7 +76,7 @@ export default function VideosAdmin() {
     try {
       if (editingVideo) {
         // Update existing video
-        const res = await fetch(`/api/videos/${editingVideo.id}`, {
+        const res = await fetch(`/api/videos/${editingVideo._id || editingVideo.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
@@ -84,7 +84,7 @@ export default function VideosAdmin() {
 
         if (res.ok) {
           const updatedVideo = await res.json();
-          setVideos(videos.map(v => v.id === updatedVideo.id ? updatedVideo : v));
+          setVideos(videos.map(v => ((v._id || v.id) === (updatedVideo._id || updatedVideo.id) ? updatedVideo : v)));
           resetForm();
         }
       } else {
@@ -129,7 +129,7 @@ export default function VideosAdmin() {
     if (confirm('Are you sure you want to delete this video?')) {
       try {
         await fetch(`/api/videos/${id}`, { method: 'DELETE' });
-        setVideos(videos.filter(v => v.id !== id));
+        setVideos(videos.filter(v => (v._id || v.id) !== id));
         setSelectedVideos(selectedVideos.filter(sid => sid !== id));
       } catch (error) {
         console.error(error);
@@ -146,7 +146,7 @@ export default function VideosAdmin() {
                 fetch(`/api/videos/${id}`, { method: 'DELETE' })
             ));
             
-            setVideos(videos.filter(v => !selectedVideos.includes(v.id)));
+            setVideos(videos.filter(v => !selectedVideos.includes(v._id || v.id)));
             setSelectedVideos([]);
         } catch (error) {
             console.error('Error deleting videos:', error);
@@ -181,7 +181,7 @@ export default function VideosAdmin() {
 
   const handleSelectAll = (e) => {
       if (e.target.checked) {
-          setSelectedVideos(filteredVideos.map(v => v.id));
+          setSelectedVideos(filteredVideos.map(v => v._id || v.id));
       } else {
           setSelectedVideos([]);
       }
@@ -258,15 +258,15 @@ export default function VideosAdmin() {
                     </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    {videos.filter(v => selectedVideos.includes(v.id)).map(video => (
-                        <div key={video.id} className="relative group w-24 h-16 rounded-md overflow-hidden border border-gray-200 bg-black">
+                    {videos.filter(v => selectedVideos.includes(v._id || v.id)).map(video => (
+                        <div key={video._id || video.id} className="relative group w-24 h-16 rounded-md overflow-hidden border border-gray-200 bg-black">
                             {video.type === 'youtube' ? (
                                 <img src={`https://img.youtube.com/vi/${getYouTubeId(video.url)}/default.jpg`} alt={video.title} className="w-full h-full object-cover opacity-70" loading="lazy" decoding="async" />
                             ) : (
                                 <video src={video.url} className="w-full h-full object-cover opacity-70" />
                             )}
                             <button 
-                                onClick={() => handleSelectOne(video.id)}
+                                onClick={() => handleSelectOne(video._id || video.id)}
                                 className="absolute top-0 right-0 bg-red-600 text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                                 <X size={12} />
@@ -427,12 +427,12 @@ export default function VideosAdmin() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredVideos.map((video) => (
-                <div key={video.id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div key={video._id || video.id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                      <div className="absolute top-2 left-2 z-10">
                         <input 
                             type="checkbox" 
-                            checked={selectedVideos.includes(video.id)}
-                            onChange={() => handleSelectOne(video.id)}
+                            checked={selectedVideos.includes(video._id || video.id)}
+                            onChange={() => handleSelectOne(video._id || video.id)}
                             className="rounded border-gray-300 text-black focus:ring-black h-4 w-4 bg-white/80 backdrop-blur-sm shadow-sm cursor-pointer"
                         />
                      </div>
@@ -462,7 +462,7 @@ export default function VideosAdmin() {
                     <button onClick={() => handleEdit(video)} className="text-gray-500 hover:text-black p-1">
                       <Edit size={16} />
                     </button>
-                    <button onClick={() => handleDelete(video.id)} className="text-gray-500 hover:text-red-600 p-1">
+                    <button onClick={() => handleDelete(video._id || video.id)} className="text-gray-500 hover:text-red-600 p-1">
                       <Trash2 size={16} />
                     </button>
                   </div>

@@ -46,4 +46,8 @@ const ArticleSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+ArticleSchema.index({ status: 1, date: -1 });
+ArticleSchema.index({ category: 1, date: -1 });
+ArticleSchema.index({ isFeatured: 1, date: -1 });
+
 export default mongoose.models.Article || mongoose.model('Article', ArticleSchema);

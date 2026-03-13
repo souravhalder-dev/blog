@@ -3,6 +3,9 @@ const nextConfig = {
   /* config options here */
   reactCompiler: true,
   images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [360, 420, 640, 768, 1024, 1280],
+    imageSizes: [16, 24, 32, 48, 64, 96, 128],
     remotePatterns: [
       {
         protocol: 'https',
@@ -24,6 +27,11 @@ const nextConfig = {
       };
     }
     return config;
+  },
+  modularizeImports: {
+    'lucide-react': {
+      transform: 'lucide-react/icons/{{member}}',
+    },
   },
 };
 

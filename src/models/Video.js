@@ -33,4 +33,7 @@ const VideoSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+VideoSchema.index({ isFeatured: 1, date: -1 });
+VideoSchema.index({ date: -1 });
+
 export default mongoose.models.Video || mongoose.model('Video', VideoSchema);

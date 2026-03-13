@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 function getYouTubeId(url) {
@@ -13,21 +13,22 @@ function getYouTubeId(url) {
 
 export default function VideoList({ videos }) {
   const [currentVideo, setCurrentVideo] = useState(videos[0]);
+  const ytPlayerRef = useRef(null);
+  const ytContainerRef = useRef(null);
+  const videoTagRef = useRef(null);
+  const ytReadyRef = useRef(false);
+  const ytInitPromiseRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const videosPerPage = 20;
   
-  if (!videos || videos.length === 0) {
-      return <div className="container mx-auto px-4 py-8">No videos found.</div>;
-  }
-
-  // Filter out the current video from the list
-  const otherVideos = videos.filter(v => v._id !== currentVideo._id);
-  
-  // Get 5 "Up Next" videos
-  const upNextVideos = otherVideos.slice(0, 5);
-  
-  // Get remaining videos for the grid (excluding "Up Next" ones)
-  const remainingVideos = otherVideos.slice(5);
+  // Compute sequential "Up Next" starting immediately after current video
+  const currentIndex = videos.findIndex(v => v._id === currentVideo._id);
+  const orderedOthers = useMemo(() => ([
+    ...videos.slice(currentIndex + 1),
+    ...videos.slice(0, currentIndex)
+  ]), [currentIndex, videos]);
+  const upNextVideos = orderedOthers.slice(0, 5);
+  const remainingVideos = orderedOthers.slice(5);
   
   // Pagination logic
   const indexOfLastVideo = currentPage * videosPerPage;
@@ -74,35 +75,115 @@ export default function VideoList({ videos }) {
     }
   };
 
+  const playNext = useCallback(() => {
+    const next = videos[(currentIndex + 1) % videos.length];
+    if (next) setCurrentVideo(next);
+  }, [currentIndex, videos]);
+
+  // Setup auto-advance for native <video>
+  useEffect(() => {
+    const el = videoTagRef.current;
+    if (!el) return;
+    const onEnded = () => playNext();
+    el.addEventListener('ended', onEnded);
+    return () => el.removeEventListener('ended', onEnded);
+  }, [currentVideo?._id, orderedOthers.length, playNext]);
+
+  // Setup auto-advance for YouTube embeds using Iframe API
+  useEffect(() => {
+    const isYouTube = currentVideo?.type !== 'upload' && !!getYouTubeId(currentVideo?.url);
+    if (!isYouTube) {
+      // Clean up any previous player
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch {}
+        ytPlayerRef.current = null;
+      }
+      return;
+    }
+    // Load YT API once
+    if (!ytInitPromiseRef.current) {
+      ytInitPromiseRef.current = new Promise((resolve) => {
+        if (window.YT && window.YT.Player) {
+          ytReadyRef.current = true;
+          resolve();
+          return;
+        }
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.body.appendChild(tag);
+        window.onYouTubeIframeAPIReady = () => {
+          ytReadyRef.current = true;
+          resolve();
+        };
+      });
+    }
+    ytInitPromiseRef.current.then(() => {
+      // Destroy previous
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch {}
+        ytPlayerRef.current = null;
+      }
+      const vid = getYouTubeId(currentVideo.url);
+      if (!vid || !ytContainerRef.current) return;
+      // Clear container
+      ytContainerRef.current.innerHTML = '';
+      const playerDiv = document.createElement('div');
+      ytContainerRef.current.appendChild(playerDiv);
+      ytPlayerRef.current = new window.YT.Player(playerDiv, {
+        height: '100%',
+        width: '100%',
+        videoId: vid,
+        playerVars: {
+          autoplay: 1,
+          rel: 0,
+          playsinline: 1,
+        },
+        events: {
+          onStateChange: (e) => {
+            const ENDED = window.YT?.PlayerState?.ENDED ?? 0;
+            if (e.data === ENDED) {
+              playNext();
+            }
+          },
+        },
+      });
+    });
+    // cleanup on unmount
+    return () => {
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch {}
+        ytPlayerRef.current = null;
+      }
+    };
+  }, [currentVideo?._id, currentVideo?.type, currentVideo?.url, playNext]);
+
   return (
     <div className="container mx-auto px-4 py-8">
+      {!videos || videos.length === 0 ? (
+        <div className="py-8">No videos found.</div>
+      ) : null}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
         
         {/* Main Video Player (Left - 8 columns) */}
         <div className="lg:col-span-8">
             <div className="aspect-video bg-black w-full rounded-lg overflow-hidden shadow-lg mb-4">
                 {currentVideo.type === 'upload' ? (
-                    <video 
-                      src={currentVideo.url} 
-                      controls 
-                      autoPlay
-                      className="w-full h-full object-contain bg-black"
-                      key={currentVideo.url} // Force reload on change
-                    />
+                  <video
+                    ref={videoTagRef}
+                    src={currentVideo.url}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain bg-black"
+                    key={currentVideo.url}
+                  />
                 ) : (
-                    getYouTubeId(currentVideo.url) ? (
-                    <iframe 
-                        src={`https://www.youtube.com/embed/${getYouTubeId(currentVideo.url)}?autoplay=1&rel=0`}
-                        title={currentVideo.title}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                    ></iframe>
-                    ) : (
+                  getYouTubeId(currentVideo.url) ? (
+                    <div ref={ytContainerRef} className="w-full h-full"></div>
+                  ) : (
                     <div className="w-full h-full flex items-center justify-center text-white bg-gray-800">
-                        Invalid Video URL
+                      Invalid Video URL
                     </div>
-                    )
+                  )
                 )}
             </div>
             <h1 className="text-2xl font-serif font-bold text-gray-900 leading-tight mb-2">{currentVideo.title}</h1>
