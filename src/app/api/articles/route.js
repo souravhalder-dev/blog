@@ -8,10 +8,7 @@ import { sendEmail } from '@/lib/email';
 export async function GET() {
   try {
     await dbConnect();
-    // Return all articles, but optionally filter by status if query param exists
-    // For admin we want all, for public maybe only published. 
-    // Currently this API is used by admin page. Public uses direct db queries in server components.
-    const articles = await Article.find({}).sort({ date: -1 });
+    const articles = await Article.find({}).sort({ date: -1 }).lean();
     return NextResponse.json(articles);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -28,19 +25,16 @@ export async function POST(request) {
     
     // Create the article
     const article = await Article.create({
-        ...body,
-        date: body.date || new Date().toISOString().split('T')[0]
+      ...body,
+      date: body.date || new Date().toISOString().split('T')[0]
     });
 
     // Notify subscribers if published
     if (body.status === 'published') {
-        // Fetch active subscribers
-        const subscribers = await Subscriber.find({ isActive: true }).select('email');
+        const subscribers = await Subscriber.find({ isActive: true }).select('email').lean();
         const emails = subscribers.map(sub => sub.email);
 
         if (emails.length > 0) {
-            // Send email asynchronously (don't block response)
-            // In a real app, use a queue (Redis/Bull)
             const subject = `New Story: ${article.title}`;
             const articleUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/article/${article.slug}`;
             
@@ -59,9 +53,7 @@ export async function POST(request) {
                 </div>
             `;
 
-            // Send individually or BCC
-            // For better deliverability and personalization, send individually in loop
-            // But for simplicity/performance in this demo context:
+            // Send emails
             Promise.all(emails.map(email => sendEmail({ to: email, subject, html })))
                 .catch(err => console.error('Failed to send notification emails:', err));
         }

@@ -23,7 +23,7 @@ export default async function SearchPage({ searchParams }) {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-serif font-bold mb-6">Search Results for "{query}"</h1>
+      <h1 className="text-3xl font-serif font-bold mb-6">Search Results for {query}</h1>
       
       {results.length === 0 ? (
         <div className="text-gray-500 italic">No articles found matching your query.</div>
@@ -39,6 +39,8 @@ export default async function SearchPage({ searchParams }) {
                           src={article.image} 
                           alt={article.title} 
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="text-gray-400 font-serif italic text-center p-4">

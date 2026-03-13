@@ -7,36 +7,25 @@ import { LayoutDashboard, FileText, FolderTree, Image, Video, LogOut, Users, Use
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
-  const [userRole, setUserRole] = useState(null);
-
-  useEffect(() => {
-    // Check local storage or fetch session to determine role
-    // Since we set cookie as httpOnly, we can't read it here.
-    // But login API returns user data, we should store it in localStorage or Context.
-    // For now, let's assume localStorage 'user_role' is set on login.
-    // If not, we should probably fetch /api/auth/me (need to create it) or just hide items based on failure.
-    
-    // Better approach: fetch user profile on mount to verify session and get role
-    // But since middleware already protects the routes, we can just hide the UI elements.
-    // Let's assume the user object is stored in localStorage on login for UI purposes.
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-        try {
-            const parsed = JSON.parse(storedUser);
-            setUserRole(parsed.role);
-        } catch (e) {
-            // ignore
-        }
+  const [userRole] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        try { return JSON.parse(stored).role; } catch {}
+      }
     }
-  }, []);
+    return null;
+  });
 
   const allNavItems = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin'] },
     { href: '/admin/articles', label: 'Articles', icon: FileText, roles: ['admin'] },
     { href: '/admin/pages', label: 'Pages', icon: File, roles: ['admin'] },
     { href: '/admin/categories', label: 'Categories', icon: FolderTree, roles: ['admin'] },
+    { href: '/admin/settings/general', label: 'General Settings', icon: Settings, roles: ['admin'] },
     { href: '/admin/settings/homepage', label: 'Homepage Layout', icon: Settings, roles: ['admin'] },
     { href: '/admin/settings/seo', label: 'SEO Settings', icon: Settings, roles: ['admin'] },
+    { href: '/admin/settings/rss', label: 'RSS & Sitemap', icon: Settings, roles: ['admin'] },
     { href: '/admin/import', label: 'Import Content', icon: Import, roles: ['admin'] },
     { href: '/admin/backup', label: 'Backup', icon: Database, roles: ['admin'] },
     { href: '/admin/photos', label: 'Photos', icon: Image, roles: ['admin'] },

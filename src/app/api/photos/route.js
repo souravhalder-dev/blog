@@ -6,7 +6,7 @@ import Photo from '@/models/Photo';
 export async function GET() {
   try {
     await dbConnect();
-    const photos = await Photo.find({}).sort({ date: -1 });
+    const photos = await Photo.find({}).sort({ date: -1 }).lean();
     return NextResponse.json(photos);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -18,8 +18,8 @@ export async function POST(request) {
     await dbConnect();
     const body = await request.json();
     const photo = await Photo.create({
-        ...body,
-        date: new Date().toISOString().split('T')[0]
+      ...body,
+      date: body.date || new Date().toISOString().split('T')[0]
     });
     return NextResponse.json(photo, { status: 201 });
   } catch (error) {

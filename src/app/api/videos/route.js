@@ -6,9 +6,11 @@ import Video from '@/models/Video';
 export async function GET() {
   try {
     await dbConnect();
-    const videos = await Video.find({}).sort({ date: -1 });
+    const videos = await Video.find({}).sort({ date: -1 }).lean();
+    console.log(`Fetched ${videos.length} videos`); // Debug log
     return NextResponse.json(videos);
   } catch (error) {
+    console.error('Error fetching videos:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -18,25 +20,27 @@ export async function POST(request) {
     await dbConnect();
     const body = await request.json();
     
-    // Generate slug if not present (though middleware handles it, explicit is safer for control)
-    let slug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    // Generate slug from title
+    const baseSlug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    let slug = baseSlug;
     
     // Ensure uniqueness
-    let existingVideo = await Video.findOne({ slug });
+    let existingVideo = await Video.findOne({ slug }).lean();
     let counter = 1;
     while (existingVideo) {
-        slug = `${slug}-${counter}`;
-        existingVideo = await Video.findOne({ slug });
+        slug = `${baseSlug}-${counter}`;
+        existingVideo = await Video.findOne({ slug }).lean();
         counter++;
     }
 
     const video = await Video.create({
-        ...body,
-        slug,
-        date: body.date || new Date().toISOString().split('T')[0]
+      ...body,
+      slug,
+      date: body.date || new Date().toISOString().split('T')[0]
     });
     return NextResponse.json(video, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Error creating video:', error);
+    return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
   }
 }

@@ -1,4 +1,3 @@
-
 import { Playfair_Display, Merriweather } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -6,6 +5,7 @@ import Footer from "@/components/Footer";
 import NextTopLoader from 'nextjs-toploader';
 import dbConnect from '@/lib/db';
 import Settings from '@/models/Settings';
+import CookieNotice from "@/components/CookieNotice";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -30,14 +30,21 @@ async function getGoogleVerification() {
 }
 
 export async function generateMetadata() {
+  await dbConnect();
   const googleVerification = await getGoogleVerification();
-  
+  const [titleSetting, descSetting, faviconSetting] = await Promise.all([
+    Settings.findOne({ key: 'site_title' }),
+    Settings.findOne({ key: 'site_description' }),
+    Settings.findOne({ key: 'favicon_url' }),
+  ]);
+  const title = titleSetting?.value || 'Writer';
+  const description = descSetting?.value || 'Stories, photos and videos';
+  const icons = faviconSetting?.value ? { icon: [{ url: faviconSetting.value }] } : undefined;
   return {
-    title: "Sourav Halder | Writer & Journalist",
-    description: "Official website of writer Sourav Halder. Explore articles, photos, and videos.",
-    verification: {
-      google: googleVerification,
-    },
+    title,
+    description,
+    verification: { google: googleVerification },
+    icons,
   };
 }
 
@@ -49,6 +56,7 @@ export default async function RootLayout({ children }) {
       >
         <NextTopLoader color="#000" height={3} showSpinner={false} />
         <Header />
+        <CookieNotice />
         <main className="min-h-screen">
           {children}
         </main>

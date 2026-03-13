@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { ArrowLeft, User } from 'lucide-react';
 import dbConnect from '@/lib/db';
 import Article from '@/models/Article';
-import UserModel from '@/models/User';
+import UserDoc from '@/models/User';
 
 export const dynamic = 'force-dynamic';
 
 export async function generateStaticParams() {
   await dbConnect();
-  const articles = await Article.find({}, { slug: 1 }).lean();
+  const articles = await Article.find({}).select('slug').lean();
   return articles.map((article) => ({
     slug: article.slug,
   }));
@@ -20,10 +20,10 @@ export default async function ArticlePage({ params }) {
   await dbConnect();
   const { slug } = await params;
   
-  // Try finding by exact slug match first (Next.js usually decodes params)
+  // Try finding by exact slug match first
   let article = await Article.findOne({ slug }).lean();
 
-  // If not found, try decoding it explicitly (just in case)
+  // If not found, try decoding it explicitly
   if (!article) {
       try {
         article = await Article.findOne({ slug: decodeURIComponent(slug) }).lean();
@@ -32,25 +32,17 @@ export default async function ArticlePage({ params }) {
       }
   }
 
-  // If still not found, try ENCODING it (because some imported articles might have percent-encoded slugs in DB)
+  // If still not found, try ENCODING it
   if (!article) {
       article = await Article.findOne({ slug: encodeURIComponent(slug) }).lean();
   }
   
-  // Try one more variation: encoded but lowercase? (encodeURIComponent uses uppercase hex)
-  if (!article) {
-       article = await Article.findOne({ slug: encodeURIComponent(slug).toLowerCase() }).lean();
-  }
-
   if (!article) {
     notFound();
   }
 
-  // Convert _id to string
-  article._id = article._id.toString();
-
   // Fetch admin user details for "About the Author"
-  const adminUser = await UserModel.findOne({ role: 'admin' }).lean();
+  const adminUser = await UserDoc.findOne({ role: 'admin' }).lean();
 
   // Helper to format content (handle plain text newlines if not HTML)
   const formatContent = (content) => {
@@ -66,7 +58,10 @@ export default async function ArticlePage({ params }) {
   const relatedArticles = await Article.find({ 
     category: article.category,
     _id: { $ne: article._id }
-  }).sort({ date: -1 }).limit(3).lean();
+  })
+    .sort({ date: -1 })
+    .limit(3)
+    .lean();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -96,6 +91,8 @@ export default async function ArticlePage({ params }) {
                 src={article.image} 
                 alt={article.title} 
                 className="w-full h-full object-cover"
+                fetchPriority="high"
+                decoding="sync"
               />
             ) : (
               <div className="text-gray-400 font-serif italic text-lg">
@@ -113,8 +110,8 @@ export default async function ArticlePage({ params }) {
            <h3 className="font-bold mb-4">About the Author</h3>
            <div className="flex gap-4 items-center bg-gray-50 p-6 rounded-lg">
               <div className="w-16 h-16 bg-gray-300 rounded-full flex-shrink-0 overflow-hidden">
-                 {adminUser?.photo ? (
-                    <img src={adminUser.photo} alt={adminUser.name} className="w-full h-full object-cover" />
+                 {adminUser?.image ? ( // Changed from photo to image to match Prisma schema
+                    <img src={adminUser.image} alt={adminUser.name} className="w-full h-full object-cover" />
                  ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
                        <User size={32} />
@@ -124,7 +121,8 @@ export default async function ArticlePage({ params }) {
               <div>
                  <p className="font-bold">{adminUser?.name || article.author}</p>
                  <p className="text-sm text-gray-600 whitespace-pre-line">
-                    {adminUser?.description || 'Journalist and storyteller based in New York. Covering technology, culture, and the human experience.'}
+                    {/* User model in Prisma doesn't have description yet, fallback to default text */}
+                    {'Journalist and storyteller based in New York. Covering technology, culture, and the human experience.'}
                  </p>
               </div>
            </div>
@@ -137,7 +135,7 @@ export default async function ArticlePage({ params }) {
           <h3 className="text-2xl font-serif font-bold mb-8 text-center">Related Stories</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {relatedArticles.map(related => (
-              <div key={related._id.toString()} className="group">
+              <div key={related.id} className="group">
                 <Link href={`/article/${related.slug}`}>
                   <div className="aspect-video bg-gray-100 mb-4 overflow-hidden flex items-center justify-center">
                     {related.image ? (
@@ -145,6 +143,8 @@ export default async function ArticlePage({ params }) {
                         src={related.image} 
                         alt={related.title} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="text-gray-400 text-xs font-serif italic text-center p-2">{related.title}</div>

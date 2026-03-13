@@ -14,7 +14,7 @@ export async function POST(request) {
     await dbConnect();
     const { email, password } = await request.json();
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).lean();
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
@@ -39,11 +39,10 @@ export async function POST(request) {
       .sign(SECRET_KEY);
 
     const userData = {
-      _id: user._id,
+      _id: user._id.toString(),
       email: user.email,
       name: user.name,
-      photo: user.photo,
-      description: user.description,
+      image: user.photo, // Use photo as per Mongoose model
       role: user.role
     };
     

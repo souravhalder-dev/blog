@@ -13,7 +13,8 @@ export default function PhotosAdmin() {
     description: '',
     url: '', 
     date: new Date().toISOString().split('T')[0],
-    type: 'url' 
+    type: 'url',
+    isFeatured: false 
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -51,15 +52,16 @@ export default function PhotosAdmin() {
         body: formData,
       });
 
+      const data = await res.json();
+      
       if (res.ok) {
-        const data = await res.json();
         setNewPhoto(prev => ({ ...prev, url: data.url }));
       } else {
-        alert('Upload failed');
+        alert('Upload failed: ' + (data.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Error uploading file');
+      alert('Error uploading file: ' + error.message);
     } finally {
       setIsUploading(false);
     }
@@ -70,7 +72,7 @@ export default function PhotosAdmin() {
       try {
         let res;
         if (editingPhoto) {
-          res = await fetch(`/api/photos/${editingPhoto._id}`, {
+          res = await fetch(`/api/photos/${editingPhoto.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newPhoto),
@@ -86,7 +88,7 @@ export default function PhotosAdmin() {
         if (res.ok) {
           const savedPhoto = await res.json();
           if (editingPhoto) {
-             setPhotos(photos.map(p => p._id === savedPhoto._id ? savedPhoto : p));
+             setPhotos(photos.map(p => p.id === savedPhoto.id ? savedPhoto : p));
           } else {
              setPhotos([savedPhoto, ...photos]);
           }
@@ -107,7 +109,8 @@ export default function PhotosAdmin() {
       description: photo.description || '',
       url: photo.url,
       date: photo.date,
-      type: photo.type || 'url'
+      type: photo.type || 'url',
+      isFeatured: photo.isFeatured || false
     });
     setIsAdding(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -120,7 +123,8 @@ export default function PhotosAdmin() {
       description: '',
       url: '', 
       date: new Date().toISOString().split('T')[0],
-      type: 'url' 
+      type: 'url',
+      isFeatured: false 
     });
     setIsAdding(false);
   };
@@ -129,7 +133,7 @@ export default function PhotosAdmin() {
     if (confirm('Are you sure you want to delete this photo?')) {
       try {
         await fetch(`/api/photos/${id}`, { method: 'DELETE' });
-        setPhotos(photos.filter(p => p._id !== id));
+        setPhotos(photos.filter(p => p.id !== id));
         setSelectedPhotos(selectedPhotos.filter(sid => sid !== id));
       } catch (error) {
         console.error(error);
@@ -146,7 +150,7 @@ export default function PhotosAdmin() {
                 fetch(`/api/photos/${id}`, { method: 'DELETE' })
             ));
             
-            setPhotos(photos.filter(p => !selectedPhotos.includes(p._id)));
+            setPhotos(photos.filter(p => !selectedPhotos.includes(p.id)));
             setSelectedPhotos([]);
         } catch (error) {
             console.error('Error deleting photos:', error);
@@ -161,7 +165,7 @@ export default function PhotosAdmin() {
 
   const handleSelectAll = (e) => {
       if (e.target.checked) {
-          setSelectedPhotos(filteredPhotos.map(p => p._id));
+          setSelectedPhotos(filteredPhotos.map(p => p.id));
       } else {
           setSelectedPhotos([]);
       }
@@ -228,6 +232,30 @@ export default function PhotosAdmin() {
               />
               <label htmlFor="selectAll" className="text-sm font-medium text-gray-700 cursor-pointer select-none">Select All Photos</label>
           </div>
+
+          {selectedPhotos.length > 0 && (
+             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-bold text-sm text-gray-700">Selected Photos ({selectedPhotos.length})</h3>
+                    <button onClick={() => setSelectedPhotos([])} className="text-xs text-gray-500 hover:text-black">
+                        Clear Selection
+                    </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {photos.filter(p => selectedPhotos.includes(p.id)).map(photo => (
+                        <div key={photo.id} className="relative group w-16 h-16 rounded-md overflow-hidden border border-gray-200">
+                            <img src={photo.url} alt={photo.title} className="w-full h-full object-cover" />
+                            <button 
+                                onClick={() => handleSelectOne(photo.id)}
+                                className="absolute top-0 right-0 bg-red-600 text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+             </div>
+          )}
 
           {isAdding && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -323,6 +351,18 @@ export default function PhotosAdmin() {
                         onChange={(e) => setNewPhoto({...newPhoto, date: e.target.value})}
                       />
                    </div>
+
+                   <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-gray-300 text-black focus:ring-black"
+                          checked={newPhoto.isFeatured}
+                          onChange={(e) => setNewPhoto({...newPhoto, isFeatured: e.target.checked})}
+                        />
+                        <span className="text-sm font-medium text-gray-700">Display on Homepage (In Picture)</span>
+                      </label>
+                   </div>
                    
                    {/* Preview */}
                    <div>
@@ -354,12 +394,12 @@ export default function PhotosAdmin() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {filteredPhotos.map((photo) => (
-                <div key={photo._id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div key={photo.id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="absolute top-2 left-2 z-10">
                         <input 
                             type="checkbox" 
-                            checked={selectedPhotos.includes(photo._id)}
-                            onChange={() => handleSelectOne(photo._id)}
+                            checked={selectedPhotos.includes(photo.id)}
+                            onChange={() => handleSelectOne(photo.id)}
                             className="rounded border-gray-300 text-black focus:ring-black h-4 w-4 bg-white/80 backdrop-blur-sm shadow-sm cursor-pointer"
                         />
                     </div>
@@ -372,7 +412,12 @@ export default function PhotosAdmin() {
                         </span>
                     </div>
                     <div className="p-3">
-                    <h3 className="font-bold text-sm truncate">{photo.title}</h3>
+                    <div className="flex justify-between items-start mb-1">
+                        <h3 className="font-bold text-sm truncate flex-1">{photo.title}</h3>
+                        {photo.isFeatured && (
+                            <span className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0.5 rounded font-medium">Featured</span>
+                        )}
+                    </div>
                     <p className="text-xs text-gray-500">{photo.date}</p>
                  </div>
                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
@@ -384,7 +429,7 @@ export default function PhotosAdmin() {
                         <Edit size={14} />
                     </button>
                     <button 
-                        onClick={() => handleDelete(photo._id)}
+                        onClick={() => handleDelete(photo.id)}
                         className="bg-white p-1.5 rounded-full text-red-600 shadow-sm hover:bg-red-50"
                         title="Delete"
                     >

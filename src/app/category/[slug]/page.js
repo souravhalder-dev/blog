@@ -38,11 +38,13 @@ export default async function CategoryPage({ params }) {
             <div key={article._id.toString()} className="group">
                <Link href={`/article/${article.slug}`}>
                  <div className="aspect-video bg-gray-100 mb-4 overflow-hidden flex items-center justify-center relative">
-                    {article.image ? (
+                   {article.image ? (
                       <img 
                         src={article.image} 
                         alt={article.title} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="text-gray-400 font-serif italic text-lg text-center p-4">

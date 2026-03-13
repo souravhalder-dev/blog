@@ -132,6 +132,8 @@ export default function VideoList({ videos }) {
                                       src={`https://img.youtube.com/vi/${getYouTubeId(video.url)}/hqdefault.jpg`} 
                                       alt={video.title} 
                                       className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      decoding="async"
                                     />
                                 ) : (
                                     <div className="w-full h-full bg-black"></div>
@@ -174,6 +176,8 @@ export default function VideoList({ videos }) {
                                   src={`https://img.youtube.com/vi/${getYouTubeId(video.url)}/hqdefault.jpg`} 
                                   alt={video.title} 
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  loading="lazy"
+                                  decoding="async"
                                 />
                             ) : (
                                 <div className="w-full h-full bg-black"></div>

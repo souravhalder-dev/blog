@@ -11,7 +11,19 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
   const [navLinks, setNavLinks] = useState([]);
-  const [user, setUser] = useState(null);
+  const [user] = useState(() => {
+    if (typeof document !== 'undefined') {
+      const hasAuthCookie = document.cookie.split(';').some(item => item.trim().startsWith('auth='));
+      if (hasAuthCookie) {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try { return JSON.parse(storedUser); } catch {}
+        }
+      }
+    }
+    return null;
+  });
+  const [site, setSite] = useState({ title: 'SOURAV HALDER', logo: '' });
   const today = format(new Date(), 'EEEE, MMMM d, yyyy');
 
   const handleSearch = (e) => {
@@ -22,18 +34,6 @@ export default function Header() {
     }
   };
 
-  // Check auth state
-  useEffect(() => {
-    // Check for auth cookie
-    const hasAuthCookie = document.cookie.split(';').some(item => item.trim().startsWith('auth='));
-    if (hasAuthCookie) {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-    }
-  }, []);
-
   // Handle scroll effect for sticky nav
   useEffect(() => {
     const handleScroll = () => {
@@ -41,6 +41,14 @@ export default function Header() {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Load general settings for logo/title
+  useEffect(() => {
+    fetch('/api/settings/general', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setSite({ title: d.siteTitle || 'SOURAV HALDER', logo: d.siteLogoUrl || '' }))
+      .catch(() => {});
   }, []);
 
   // Fetch menu categories
@@ -98,11 +106,17 @@ export default function Header() {
         </div>
 
         <Link href="/" className="relative z-10 inline-block group">
-          <h1 className="text-3xl md:text-5xl font-serif font-black tracking-tighter leading-none mb-1 group-hover:opacity-90 transition-opacity">
-            SOURAV HALDER
-          </h1>
-          <div className="h-0.5 w-16 bg-black mx-auto mt-2 mb-1 group-hover:w-full transition-all duration-500 ease-out"></div>
-          <p className="text-xs md:text-sm font-serif italic text-gray-500 tracking-widest uppercase">The Writer's Chronicle</p>
+          {site.logo ? (
+            <img src={site.logo} alt={site.title} className="h-12 md:h-16 mx-auto" />
+          ) : (
+            <>
+              <h1 className="text-3xl md:text-5xl font-serif font-black tracking-tighter leading-none mb-1 group-hover:opacity-90 transition-opacity">
+                {site.title}
+              </h1>
+              <div className="h-0.5 w-16 bg-black mx-auto mt-2 mb-1 group-hover:w-full transition-all duration-500 ease-out"></div>
+              <p className="text-xs md:text-sm font-serif italic text-gray-500 tracking-widest uppercase">The Writer&rsquo;s Chronicle</p>
+            </>
+          )}
         </Link>
       </div>
 

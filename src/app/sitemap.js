@@ -4,16 +4,20 @@ import Article from '@/models/Article';
 import Video from '@/models/Video';
 import Photo from '@/models/Photo';
 import Page from '@/models/Page';
-
-const baseUrl = 'http://localhost:3000'; // In production, this should be your actual domain
+import Category from '@/models/Category';
+import Settings from '@/models/Settings';
 
 export default async function sitemap() {
   await dbConnect();
+  
+  const siteUrlSetting = await Settings.findOne({ key: 'site_url' });
+  const baseUrl = (siteUrlSetting?.value || 'http://localhost:3000').replace(/\/+$/, '');
 
   const articles = await Article.find({}, { slug: 1, updatedAt: 1 }).lean();
   const pages = await Page.find({ isPublished: true }, { slug: 1, updatedAt: 1 }).lean();
   const videos = await Video.find({}, { updatedAt: 1 }).lean();
   const photos = await Photo.find({}, { updatedAt: 1 }).lean();
+  const categories = await Category.find({}, { slug: 1, updatedAt: 1 }).lean();
 
   const routes = [
     '',
@@ -43,5 +47,12 @@ export default async function sitemap() {
     priority: 0.7,
   }));
 
-  return [...routes, ...articleRoutes, ...pageRoutes];
+  const categoryRoutes = categories.map((c) => ({
+    url: `${baseUrl}/category/${c.slug}`,
+    lastModified: c.updatedAt || new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }));
+
+  return [...routes, ...articleRoutes, ...pageRoutes, ...categoryRoutes];
 }

@@ -12,6 +12,14 @@ cloudinary.config({
   secure: true,
 });
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb', // Set desired value here
+    },
+  },
+};
+
 export async function POST(request) {
   try {
     const data = await request.formData();
@@ -21,8 +29,17 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'No file uploaded' }, { status: 400 });
     }
 
+    console.log(`File received: ${file.name} (${file.type}, ${file.size} bytes)`);
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    // Check if Cloudinary credentials exist
+    const hasCloudinary = process.env.CLOUDINARY_CLOUD_NAME && 
+                          process.env.CLOUDINARY_API_KEY && 
+                          process.env.CLOUDINARY_API_SECRET;
+
+    console.log(`Upload method: ${hasCloudinary ? 'Cloudinary' : 'Local Filesystem'}`);
 
     // Use Cloudinary if credentials are provided OR in production
     if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {

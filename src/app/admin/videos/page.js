@@ -52,15 +52,16 @@ export default function VideosAdmin() {
         body: data,
       });
 
+      const json = await res.json();
+      
       if (res.ok) {
-        const json = await res.json();
         setFormData(prev => ({ ...prev, url: json.url }));
       } else {
-        alert('Upload failed');
+        alert('Upload failed: ' + (json.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Error uploading file');
+      alert('Error uploading file: ' + error.message);
     } finally {
       setIsUploading(false);
     }
@@ -75,7 +76,7 @@ export default function VideosAdmin() {
     try {
       if (editingVideo) {
         // Update existing video
-        const res = await fetch(`/api/videos/${editingVideo._id}`, {
+        const res = await fetch(`/api/videos/${editingVideo.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
@@ -83,7 +84,7 @@ export default function VideosAdmin() {
 
         if (res.ok) {
           const updatedVideo = await res.json();
-          setVideos(videos.map(v => v._id === updatedVideo._id ? updatedVideo : v));
+          setVideos(videos.map(v => v.id === updatedVideo.id ? updatedVideo : v));
           resetForm();
         }
       } else {
@@ -98,11 +99,14 @@ export default function VideosAdmin() {
           const addedVideo = await res.json();
           setVideos([addedVideo, ...videos]);
           resetForm();
+        } else {
+            const errorData = await res.json();
+            alert('Failed to save video: ' + (errorData.error || 'Unknown error'));
         }
       }
     } catch (error) {
       console.error(error);
-      alert('Failed to save video');
+      alert('Failed to save video: ' + error.message);
     }
   };
 
@@ -125,7 +129,7 @@ export default function VideosAdmin() {
     if (confirm('Are you sure you want to delete this video?')) {
       try {
         await fetch(`/api/videos/${id}`, { method: 'DELETE' });
-        setVideos(videos.filter(v => v._id !== id));
+        setVideos(videos.filter(v => v.id !== id));
         setSelectedVideos(selectedVideos.filter(sid => sid !== id));
       } catch (error) {
         console.error(error);
@@ -142,7 +146,7 @@ export default function VideosAdmin() {
                 fetch(`/api/videos/${id}`, { method: 'DELETE' })
             ));
             
-            setVideos(videos.filter(v => !selectedVideos.includes(v._id)));
+            setVideos(videos.filter(v => !selectedVideos.includes(v.id)));
             setSelectedVideos([]);
         } catch (error) {
             console.error('Error deleting videos:', error);
@@ -177,7 +181,7 @@ export default function VideosAdmin() {
 
   const handleSelectAll = (e) => {
       if (e.target.checked) {
-          setSelectedVideos(filteredVideos.map(v => v._id));
+          setSelectedVideos(filteredVideos.map(v => v.id));
       } else {
           setSelectedVideos([]);
       }
@@ -217,13 +221,13 @@ export default function VideosAdmin() {
                 <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
             </div>
             <button 
-            onClick={() => {
-                resetForm();
-                setIsAdding(true);
-            }} 
-            className="bg-black text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-gray-800 flex-shrink-0"
+                onClick={() => {
+                    resetForm();
+                    setIsAdding(true);
+                }} 
+                className="bg-black text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-gray-800 flex-shrink-0"
             >
-            <Plus size={16} /> Add Video
+                <Plus size={16} /> Add Video
             </button>
         </div>
       </div>
@@ -244,6 +248,34 @@ export default function VideosAdmin() {
               />
               <label htmlFor="selectAll" className="text-sm font-medium text-gray-700 cursor-pointer select-none">Select All Videos</label>
           </div>
+
+          {selectedVideos.length > 0 && (
+             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-bold text-sm text-gray-700">Selected Videos ({selectedVideos.length})</h3>
+                    <button onClick={() => setSelectedVideos([])} className="text-xs text-gray-500 hover:text-black">
+                        Clear Selection
+                    </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {videos.filter(v => selectedVideos.includes(v.id)).map(video => (
+                        <div key={video.id} className="relative group w-24 h-16 rounded-md overflow-hidden border border-gray-200 bg-black">
+                            {video.type === 'youtube' ? (
+                                <img src={`https://img.youtube.com/vi/${getYouTubeId(video.url)}/default.jpg`} alt={video.title} className="w-full h-full object-cover opacity-70" loading="lazy" decoding="async" />
+                            ) : (
+                                <video src={video.url} className="w-full h-full object-cover opacity-70" />
+                            )}
+                            <button 
+                                onClick={() => handleSelectOne(video.id)}
+                                className="absolute top-0 right-0 bg-red-600 text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <X size={12} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+             </div>
+          )}
 
           {isAdding && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -364,6 +396,8 @@ export default function VideosAdmin() {
                                   src={`https://img.youtube.com/vi/${getYouTubeId(formData.url)}/hqdefault.jpg`} 
                                   alt="Preview" 
                                   className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  decoding="async"
                                 />
                               ) : <span className="text-xs">Invalid YouTube URL</span>
                             ) : (
@@ -387,72 +421,51 @@ export default function VideosAdmin() {
           )}
 
           {filteredVideos.length === 0 ? (
-              <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  {searchQuery ? 'No videos match your search.' : 'No videos found. Add one to get started.'}
-              </div>
+             <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                {searchQuery ? 'No videos match your search.' : 'No videos found. Add one to get started.'}
+             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredVideos.map((video) => (
-                <div key={video._id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <div className="absolute top-2 left-2 z-10">
+                <div key={video.id} className="group relative bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                     <div className="absolute top-2 left-2 z-10">
                         <input 
                             type="checkbox" 
-                            checked={selectedVideos.includes(video._id)}
-                            onChange={() => handleSelectOne(video._id)}
-                            className="rounded border-gray-300 text-black focus:ring-black h-4 w-4 bg-white/80 backdrop-blur-sm"
+                            checked={selectedVideos.includes(video.id)}
+                            onChange={() => handleSelectOne(video.id)}
+                            className="rounded border-gray-300 text-black focus:ring-black h-4 w-4 bg-white/80 backdrop-blur-sm shadow-sm cursor-pointer"
                         />
-                    </div>
-                    <div className="aspect-video bg-black flex items-center justify-center text-gray-400 relative">
-                        {video.type === 'youtube' || !video.type ? ( // Default to youtube for old records
-                            getYouTubeId(video.url) ? (
-                                <img 
-                                src={`https://img.youtube.com/vi/${getYouTubeId(video.url)}/hqdefault.jpg`} 
-                                alt={video.title} 
-                                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-                                    <LinkIcon size={24} />
-                                </div>
-                            )
+                     </div>
+                     <div className="aspect-video bg-black flex items-center justify-center relative">
+                        {video.type === 'youtube' ? (
+                            <img src={`https://img.youtube.com/vi/${getYouTubeId(video.url)}/default.jpg`} alt={video.title} className="w-full h-full object-cover opacity-70" />
                         ) : (
-                            <video src={video.url} className="w-full h-full object-cover" />
+                            <video src={video.url} className="w-full h-full object-cover opacity-70" />
                         )}
-                        
-                        {/* Type Badge */}
-                        <span className={`absolute top-2 left-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded text-white ${video.type === 'upload' ? 'bg-blue-600' : 'bg-red-600'}`}>
-                            {video.type === 'upload' ? 'Upload' : 'YouTube'}
-                    </span>
-                    
-                    {/* Featured Badge */}
-                    {video.isFeatured && (
-                      <span className="absolute top-2 left-16 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded text-white bg-green-600">
-                        Featured
-                      </span>
-                    )}
-                 </div>
-                 
-                 <div className="p-4">
-                        <h3 className="font-bold text-sm truncate mb-1" title={video.title}>{video.title}</h3>
-                        <p className="text-xs text-gray-500">{video.date}</p>
-                    </div>
-                    
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button 
-                            onClick={() => handleEdit(video)}
-                            className="bg-white p-2 rounded-full text-blue-600 shadow-sm hover:bg-blue-50"
-                            title="Edit"
-                        >
-                            <Edit size={16} />
-                        </button>
-                        <button 
-                            onClick={() => handleDelete(video._id)}
-                            className="bg-white p-2 rounded-full text-red-600 shadow-sm hover:bg-red-50"
-                            title="Delete"
-                        >
-                            <Trash2 size={16} />
-                        </button>
-                    </div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                                <VideoIcon className="text-white" size={24} />
+                            </div>
+                        </div>
+                     </div>
+                     <div className="p-3">
+                     <div className="flex justify-between items-start mb-1">
+                        <h3 className="font-bold text-sm truncate flex-1">{video.title}</h3>
+                        {video.isFeatured && (
+                            <span className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0.5 rounded font-medium">Featured</span>
+                        )}
+                     </div>
+                     <p className="text-xs text-gray-500">{video.date}</p>
+                  </div>
+                  
+                  <div className="p-3 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEdit(video)} className="text-gray-500 hover:text-black p-1">
+                      <Edit size={16} />
+                    </button>
+                    <button onClick={() => handleDelete(video.id)} className="text-gray-500 hover:text-red-600 p-1">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
                 ))}
             </div>

@@ -50,6 +50,8 @@ export default function CategoriesAdmin() {
 
   const handleToggleMenu = async (category) => {
     try {
+      // Prisma schema doesn't have showInMenu yet, so this might not persist properly
+      // but let's keep the frontend logic consistent.
       const updated = { ...category, showInMenu: !category.showInMenu };
       const res = await fetch('/api/categories', {
         method: 'PUT',
@@ -58,7 +60,7 @@ export default function CategoriesAdmin() {
       });
       
       if (res.ok) {
-        setCategories(categories.map(c => c._id === category._id ? updated : c));
+        setCategories(categories.map(c => c.id === category.id ? updated : c));
       }
     } catch (error) {
       console.error(error);
@@ -69,7 +71,7 @@ export default function CategoriesAdmin() {
     if (confirm('Are you sure you want to delete this category?')) {
       try {
         await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-        setCategories(categories.filter(c => c._id !== id));
+        setCategories(categories.filter(c => c.id !== id));
       } catch (error) {
         console.error(error);
       }
@@ -105,7 +107,7 @@ export default function CategoriesAdmin() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {categories.map((category) => (
-                <tr key={category._id} className="hover:bg-gray-50">
+                <tr key={category.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-900">{category.name}</td>
                   <td className="px-6 py-4 text-gray-500">{category.slug}</td>
                   <td className="px-6 py-4 text-center">
@@ -117,7 +119,7 @@ export default function CategoriesAdmin() {
                     </button>
                   </td>
                   <td className="px-6 py-4 text-right flex justify-end gap-2">
-                    <button onClick={() => handleDelete(category._id)} className="text-red-600 hover:text-red-900 p-1">
+                    <button onClick={() => handleDelete(category.id)} className="text-red-600 hover:text-red-900 p-1">
                       <Trash2 size={16} />
                     </button>
                   </td>

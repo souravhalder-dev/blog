@@ -9,7 +9,7 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
     const photo = await Photo.findByIdAndDelete(id);
     if (!photo) {
-      return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
+       return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
     }
     return NextResponse.json({ message: 'Photo deleted' });
   } catch (error) {
@@ -22,14 +22,22 @@ export async function PUT(request, { params }) {
     await dbConnect();
     const { id } = await params;
     const body = await request.json();
-    const photo = await Photo.findByIdAndUpdate(id, body, { new: true });
+    
+    // Clean up body
+    const updateData = { ...body };
+    delete updateData._id;
+    delete updateData.createdAt;
+    delete updateData.updatedAt;
+
+    const photo = await Photo.findByIdAndUpdate(id, updateData, { new: true });
     
     if (!photo) {
-      return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
+       return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
     }
     
     return NextResponse.json(photo);
   } catch (error) {
+    console.error('Error updating photo:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

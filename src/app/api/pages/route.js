@@ -6,7 +6,7 @@ import Page from '@/models/Page';
 export async function GET() {
   try {
     await dbConnect();
-    const pages = await Page.find({}).sort({ createdAt: -1 });
+    const pages = await Page.find({}).sort({ createdAt: -1 }).lean();
     return NextResponse.json(pages);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -28,10 +28,16 @@ export async function POST(request) {
         body.slug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
 
-    const page = await Page.create(body);
+    const page = await Page.create({
+      title: body.title,
+      content: body.content,
+      slug: body.slug,
+      order: body.order || 0,
+      isVisible: body.isVisible !== false // Default true
+    });
     return NextResponse.json(page, { status: 201 });
   } catch (error) {
-    // Handle duplicate key error (E11000)
+    // Handle duplicate key error
     if (error.code === 11000) {
         return NextResponse.json({ error: 'Slug already exists. Please choose a unique one.' }, { status: 400 });
     }

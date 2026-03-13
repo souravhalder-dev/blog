@@ -23,6 +23,10 @@ const PhotoSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  isFeatured: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 export default mongoose.models.Photo || mongoose.model('Photo', PhotoSchema);

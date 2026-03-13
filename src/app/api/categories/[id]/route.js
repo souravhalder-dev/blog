@@ -9,7 +9,7 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
     const category = await Category.findByIdAndDelete(id);
     if (!category) {
-      return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
     return NextResponse.json({ message: 'Category deleted' });
   } catch (error) {

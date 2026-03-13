@@ -4,31 +4,30 @@ import { useState, useEffect } from 'react';
 import { X, ZoomIn, Grid, Film, Bookmark, User, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function PhotoGallery({ photos, user, initialPhotoId }) {
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
+  const [selectedPhoto, setSelectedPhoto] = useState(() => {
     if (initialPhotoId) {
-        const index = photos.findIndex(p => p._id === initialPhotoId);
-        if (index !== -1) {
-            setSelectedPhoto(photos[index]);
-            setCurrentIndex(index);
-            document.body.style.overflow = 'hidden';
-        }
+      const idx = photos.findIndex(p => p._id === initialPhotoId);
+      if (idx !== -1) return photos[idx];
     }
-  }, [initialPhotoId, photos]);
+    return null;
+  });
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (initialPhotoId) {
+      const idx = photos.findIndex(p => p._id === initialPhotoId);
+      if (idx !== -1) return idx;
+    }
+    return 0;
+  });
 
   const openLightbox = (photo, index) => {
     setSelectedPhoto(photo);
     setCurrentIndex(index);
-    document.body.style.overflow = 'hidden'; // Prevent scrolling
     // Update URL without reloading
     window.history.pushState(null, '', `/photos/${photo._id}`);
   };
 
   const closeLightbox = () => {
     setSelectedPhoto(null);
-    document.body.style.overflow = 'auto'; // Restore scrolling
     // Revert URL to /photos
     window.history.pushState(null, '', '/photos');
   };
@@ -65,6 +64,14 @@ export default function PhotoGallery({ photos, user, initialPhotoId }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedPhoto, currentIndex]);
 
+  // Lock page scroll when lightbox open
+  useEffect(() => {
+    if (selectedPhoto) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = 'auto'; };
+    }
+  }, [selectedPhoto]);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Profile Header */}
@@ -74,7 +81,7 @@ export default function PhotoGallery({ photos, user, initialPhotoId }) {
            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 p-[2px]">
               <div className="w-full h-full rounded-full border-2 border-white overflow-hidden bg-gray-100">
                  {user?.photo ? (
-                    <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                    <img src={user.photo} alt={user.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                  ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
                        <User size={40} />
@@ -108,6 +115,8 @@ export default function PhotoGallery({ photos, user, initialPhotoId }) {
                   src={photo.url} 
                   alt={photo.title} 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                  decoding="async"
                 />
             ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
@@ -164,6 +173,8 @@ export default function PhotoGallery({ photos, user, initialPhotoId }) {
                     src={selectedPhoto.url} 
                     alt={selectedPhoto.title} 
                     className="max-w-full max-h-full object-contain"
+                    fetchPriority="high"
+                    decoding="sync"
                 />
             </div>
 
@@ -172,7 +183,7 @@ export default function PhotoGallery({ photos, user, initialPhotoId }) {
                 <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
                     <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
                         {user?.photo ? (
-                            <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
+                            <img src={user.photo} alt={user.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                         ) : (
                             <User size={20} className="m-auto mt-1 text-gray-400" />
                         )}

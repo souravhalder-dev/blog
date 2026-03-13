@@ -11,21 +11,36 @@ export async function PUT(request, { params }) {
     
     // Update slug if title changes
     if (body.title) {
-        let slug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-        let existingVideo = await Video.findOne({ slug, _id: { $ne: id } });
+        let baseSlug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        let slug = baseSlug;
+        // Check uniqueness excluding current video
+        let existingVideo = await Video.findOne({ 
+           slug, 
+           _id: { $ne: id } 
+        }).lean();
+        
         let counter = 1;
         while (existingVideo) {
-            slug = `${slug}-${counter}`;
-            existingVideo = await Video.findOne({ slug, _id: { $ne: id } });
+            slug = `${baseSlug}-${counter}`;
+            existingVideo = await Video.findOne({ 
+               slug, 
+               _id: { $ne: id } 
+            }).lean();
             counter++;
         }
         body.slug = slug;
     }
 
-    const video = await Video.findByIdAndUpdate(id, body, { new: true });
+    // Clean up body
+    const updateData = { ...body };
+    delete updateData._id;
+    delete updateData.createdAt;
+    delete updateData.updatedAt;
+
+    const video = await Video.findByIdAndUpdate(id, updateData, { new: true });
     
     if (!video) {
-      return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
     
     return NextResponse.json(video);
@@ -39,9 +54,11 @@ export async function DELETE(request, { params }) {
     await dbConnect();
     const { id } = await params;
     const video = await Video.findByIdAndDelete(id);
+    
     if (!video) {
-      return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
+    
     return NextResponse.json({ message: 'Video deleted' });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

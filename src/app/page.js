@@ -5,7 +5,9 @@ import dbConnect from '@/lib/db';
 import Article from '@/models/Article';
 import Photo from '@/models/Photo';
 import Video from '@/models/Video';
+import Category from '@/models/Category';
 import HomepageSetting from '@/models/HomepageSetting';
+import Settings from '@/models/Settings';
 
 export const dynamic = 'force-dynamic'; // For demo purposes, to see updates instantly
 
@@ -14,11 +16,65 @@ async function getData() {
   
   // Use .lean() to get plain JS objects instead of Mongoose documents
   // and manually convert _id to string to avoid serialization issues
-  const articles = await Article.find({}).sort({ date: -1 }).lean();
-  const photos = await Photo.find({}).sort({ date: -1 }).limit(3).lean();
-  const videos = await Video.find({}).sort({ date: -1 }).limit(1).lean();
-  const featuredVideo = await Video.findOne({ isFeatured: true }).lean() || videos[0];
-  const inPictures = await Photo.find({}).sort({ date: -1 }).limit(4).lean();
+  const articles = await Article.find({ status: 'published' })
+    .sort({ date: -1 })
+    .lean();
+  
+  const serializedArticles = articles.map(article => ({
+    ...article,
+    _id: article._id.toString(),
+  }));
+  
+  // Fetch Featured Photos for "In Pictures"
+  // Prioritize featured photos, sort by date descending
+  let inPictures = await Photo.find({ isFeatured: true })
+    .sort({ date: -1 })
+    .limit(4)
+    .lean();
+    
+  // If not enough featured photos, fill with latest regular photos
+  if (inPictures.length < 4) {
+      const existingIds = inPictures.map(p => p._id);
+      const morePhotos = await Photo.find({ _id: { $nin: existingIds } })
+        .sort({ date: -1 })
+        .limit(4 - inPictures.length)
+        .lean();
+      inPictures = [...inPictures, ...morePhotos];
+  }
+  
+  const serializedInPictures = inPictures.map(photo => ({
+    ...photo,
+    _id: photo._id.toString(),
+  }));
+
+  // Fetch Featured Video
+  // Prioritize featured video, fallback to latest
+  let featuredVideo = await Video.findOne({ isFeatured: true })
+    .sort({ date: -1 })
+    .lean();
+    
+  if (!featuredVideo) {
+      featuredVideo = await Video.findOne({})
+        .sort({ date: -1 })
+        .lean();
+  }
+  
+  const serializedFeaturedVideo = featuredVideo ? {
+    ...featuredVideo,
+    _id: featuredVideo._id.toString(),
+  } : null;
+
+  const videos = await Video.find({})
+    .sort({ date: -1 })
+    .limit(1)
+    .lean();
+    
+  const serializedVideos = videos.map(v => ({
+    ...v,
+    _id: v._id.toString(),
+  }));
+  
+  const photos = serializedInPictures; 
   
   // Initialize default settings if they don't exist
   const count = await HomepageSetting.countDocuments();
@@ -32,38 +88,21 @@ async function getData() {
      await HomepageSetting.insertMany(DEFAULT_SECTIONS);
   }
 
-  const settings = await HomepageSetting.find({ isVisible: true }).sort({ order: 1 }).lean();
+  const settings = await HomepageSetting.find({ isVisible: true })
+    .sort({ order: 1 })
+    .lean();
+
+  const serializedSettings = settings.map(s => ({
+    ...s,
+    _id: s._id.toString(),
+  }));
 
   // Fetch category articles for dynamic sections
-  const dynamicSections = settings.filter(s => s.type === 'category');
+  const dynamicSections = serializedSettings.filter(s => s.type === 'category');
   const categoryArticlesMap = {};
   
-  for (const section of dynamicSections) {
-      if (section.categorySlug) {
-          // Find category by slug first to get name if needed, but we store slug
-          // Actually let's just query articles by category (assuming we stored category name or slug in article)
-          // In seed-db.js we stored category Name (e.g. "Technology").
-          // But our new Category model has slug.
-          // Let's find the Category document first to get the Name matching the Article schema
-          // OR better: Update Article schema to store slug or ObjectId. 
-          // Current Article schema stores "category" as String (Name).
-          // So we need to map slug -> Name.
-          
-          // Let's assume we can fetch 3 articles for each category section
-          // First get the category name from the slug
-          // This is a bit inefficient inside a loop, but for a few sections it's fine. 
-          // Optimization: fetch all categories at once.
-          
-          // Simplified approach: find articles where category matches the name corresponding to the slug
-          // But wait, Article.category stores the Name (e.g. "World"). 
-          // The setting stores the slug (e.g. "world").
-          // We need to resolve slug to name.
-      }
-  }
-  
   // Optimization: Fetch all categories to map slug -> name
-  // This is needed because Article.category stores the Name, not the Slug.
-  const allCategories = await import('@/models/Category').then(mod => mod.default.find({}).lean());
+  const allCategories = await Category.find({}).lean();
   const slugToName = allCategories.reduce((acc, cat) => {
       acc[cat.slug] = cat.name;
       return acc;
@@ -72,22 +111,30 @@ async function getData() {
   for (const section of dynamicSections) {
       if (section.categorySlug && slugToName[section.categorySlug]) {
           const catName = slugToName[section.categorySlug];
-          const catArticles = await Article.find({ category: catName })
-              .sort({ date: -1 })
-              .limit(4)
-              .lean();
-          categoryArticlesMap[section._id.toString()] = catArticles.map(doc => ({...doc, _id: doc._id.toString()}));
+          const catArticles = await Article.find({ category: catName, status: 'published' })
+            .sort({ date: -1 })
+            .limit(4)
+            .lean();
+          categoryArticlesMap[section._id] = catArticles.map(a => ({
+            ...a,
+            _id: a._id.toString()
+          }));
       }
   }
 
-  return {
-    articles: articles.map(doc => ({...doc, _id: doc._id.toString()})),
-    photos: photos.map(doc => ({...doc, _id: doc._id.toString()})),
-    inPictures: inPictures.map(doc => ({...doc, _id: doc._id.toString()})),
-    videos: videos.map(doc => ({...doc, _id: doc._id.toString()})),
-    featuredVideo: featuredVideo ? {...featuredVideo, _id: featuredVideo._id.toString()} : null,
-    settings: settings.map(doc => ({...doc, _id: doc._id.toString()})),
-    categoryArticlesMap
+  // Read slider enabled flag
+  const sliderSetting = await Settings.findOne({ key: 'slider_enabled' });
+  const sliderEnabled = Boolean(sliderSetting?.value);
+
+  return { 
+    articles: serializedArticles, 
+    photos, 
+    inPictures: serializedInPictures, 
+    videos: serializedVideos, 
+    featuredVideo: serializedFeaturedVideo,
+    settings: serializedSettings,
+    categoryArticlesMap,
+    sliderEnabled
   };
 }
 
@@ -99,7 +146,7 @@ function getYouTubeId(url) {
 }
 
 export default async function Home() {
-  const { articles, photos, inPictures, videos, featuredVideo, settings, categoryArticlesMap } = await getData();
+  const { articles, photos, inPictures, videos, featuredVideo, settings, categoryArticlesMap, sliderEnabled } = await getData();
 
   const featuredArticle = articles.find(a => a.isFeatured) || articles[0];
   const otherArticles = articles.filter(a => a._id !== featuredArticle?._id);
@@ -136,7 +183,13 @@ export default async function Home() {
                             <Link href={`/article/${article.slug}`}>
                                 <div className="aspect-video bg-gray-100 mb-3 overflow-hidden flex items-center justify-center">
                                     {article.image ? (
-                                    <img src={article.image} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <img 
+                                      src={article.image} 
+                                      alt={article.title} 
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                      loading="lazy"
+                                      decoding="async"
+                                    />
                                     ) : (
                                     <div className="text-gray-400 text-xs font-serif italic text-center p-2">{article.title}</div>
                                     )}
@@ -160,11 +213,13 @@ export default async function Home() {
                   <div className="md:col-span-8">
                     <Link href={`/article/${featuredArticle.slug}`} className="group">
                       <div className="relative aspect-video mb-4 overflow-hidden bg-gray-100 flex items-center justify-center">
-                         {featuredArticle.image ? (
+                          {featuredArticle.image ? (
                            <img 
                              src={featuredArticle.image} 
                              alt={featuredArticle.title} 
                              className="w-full h-full object-cover"
+                             fetchPriority="high"
+                             decoding="sync"
                            />
                          ) : (
                            <div className="text-gray-400 font-serif italic text-2xl text-center p-4">
@@ -243,12 +298,14 @@ export default async function Home() {
                    <Link key={photo._id} href={`/photos/${photo._id}`} className="group">
                        <div className="aspect-square bg-gray-100 relative overflow-hidden">
                            {photo.url ? (
-                                     <img 
-                                       src={photo.url} 
-                                       alt={photo.title} 
-                                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                                     />
-                                 ) : (
+                                    <img 
+                                      src={photo.url} 
+                                      alt={photo.title} 
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                      loading="lazy"
+                                      decoding="async"
+                                    />
+                                ) : (
                                      <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
                                  )}
                                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
@@ -318,6 +375,29 @@ export default async function Home() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {sliderEnabled && (
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-sm tracking-widest">HIGHLIGHTS</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <div className="flex gap-4 min-w-full">
+              {articles.slice(0, 10).map(a => (
+                <Link key={a._id} href={`/article/${a.slug}`} className="flex-shrink-0 w-64 group">
+                  <div className="aspect-video bg-gray-100 overflow-hidden mb-2">
+                    {a.image ? (
+                      <img src={a.image} alt={a.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" decoding="async" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">{a.title}</div>
+                    )}
+                  </div>
+                  <div className="text-sm font-semibold leading-snug group-hover:underline line-clamp-2">{a.title}</div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
       {settings.map(setting => renderSection(setting))}
     </div>
   );

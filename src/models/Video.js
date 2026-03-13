@@ -33,15 +33,4 @@ const VideoSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-// Pre-save middleware to generate slug
-VideoSchema.pre('save', function(next) {
-  if (this.title && !this.slug) {
-    this.slug = this.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '');
-  }
-  next();
-});
-
 export default mongoose.models.Video || mongoose.model('Video', VideoSchema);

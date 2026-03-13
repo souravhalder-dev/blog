@@ -73,6 +73,8 @@ export default function VideoPlayer({ currentVideo, allVideos }) {
                                       src={`https://img.youtube.com/vi/${getYouTubeId(video.url)}/hqdefault.jpg`} 
                                       alt={video.title} 
                                       className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      decoding="async"
                                     />
                                 ) : (
                                     <div className="w-full h-full bg-black"></div>
